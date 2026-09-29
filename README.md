@@ -34,7 +34,7 @@ git clone https://github.com/hanoglu/CD-FSVOD.git
 cd CD-FSVOD
 ```
 
-**Step 1 — download code, models, and annotations.** This fetches the modified BHRL code base, the pretrained base models, and the benchmark annotations, rewrites their internal paths for the `/root/BHRL` layout, and applies the patches in `patches/`:
+**Step 1 — run the 0_setup.sh to download** the modified BHRL code base, the pretrained base models, and the benchmark annotations. sh automatically rewrites the internal paths of the downloaded files according to the `/root/BHRL` layout, and copy the patches under the  `patches/` accordingly:
 
 ```bash
 cd /root
@@ -48,13 +48,12 @@ chmod +x CD-FSVOD/setup/0_setup.sh
 ipython CD-FSVOD/setup/1_install_dependencies.ipy
 ```
 
-**Step 3 — download the test videos.** VOT long-term sequences (edit `BHRL/VOTIMAGES/vot_videos.txt` first to select sequences):
+**Step 3 — download the test video sequences** downloads the VOT-long-term sequences specified by vot_videos.txt (edit `BHRL/VOTIMAGES/vot_videos.txt`):
 
 ```bash
 ipython CD-FSVOD/setup/2_download_vot_sequences.ipy
 ```
-
-FSVOD-500 images (GOT-10K, LaSOT, and TAO portions), required for base training and the few-shot fine-tuning experiments:
+**run the following code line to run the base training on FSVOD-500 dataset, you also need to download FSVOD-500 training data (GOT-10K, LaSOT, and TAO partitions), as well as the test data  required for the few-shot fine-tuning experiments:**
 
 ```bash
 chmod +x CD-FSVOD/setup/3_download_fsvod500.sh
@@ -67,20 +66,19 @@ chmod +x CD-FSVOD/setup/3_download_fsvod500.sh
 ipython CD-FSVOD/tools/configure_dataloader.ipy
 ```
 
-## Experiments
+## Test Cases
 
-The experiment groups below follow the order of the thesis: the network is first base-trained, its unadapted cross-domain performance is measured, and the two inference-time adaptation mechanisms (few-shot fine-tuning and Online Target Update) are then evaluated on still-image and long-term video benchmarks.
+The test cases described  below follow the order of the thesis outline: the network is first base-trained, its unadapted cross-domain performance is measured, and the two inference-time adaptation mechanisms (few-shot fine-tuning and Online Target Update) are then evaluated on still-image and long-term video benchmarks.
 
 ### 1. Base Training on FSVOD-500
-
-Trains BHRL from scratch on the 320 base classes of the FSVOD-500 training split (batch size 16, SGD with learning rate 0.02, step decay, 9 epochs), producing the within-domain video base model used throughout the thesis. The training annotation ships with this repository (`data/fsvod_train.json`) and is copied to `/root/BHRL` by the setup script.
+Trains BHRL from scratch on the 320 base classes of the FSVOD-500 training split (batch size 16, SGD with learning rate 0.02, step decay  XX, 9 epochs), producing the within-domain video base model. Note that the annotations of training data  copied from (`data/fsvod_train.json`) to `/root/BHRL` by the setup script.
 
 ```bash
 ./experiments/01_base_training/make_base_config.sh   # derive the training config
 ./experiments/01_base_training/train_base.sh         # start training
 ```
 
-The final checkpoint is written to `/root/BHRL/work_dirs/fsvod_base/`. To use it in the experiments below, copy it to `/root/BHRL/checkpoints/`.
+The final checkpoint is written to `/root/BHRL/work_dirs/fsvod_base/`. To use it in the test cases described below, copy it to `/root/BHRL/checkpoints/`.
 
 ### 2. Direct Evaluation Without Adaptation
 
