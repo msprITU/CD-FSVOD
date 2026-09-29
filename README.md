@@ -22,7 +22,7 @@ experiments/  one directory per experiment group, in thesis order
 
 - A CUDA-enabled Linux machine or cloud GPU instance (Ubuntu 22.04 LTS recommended), running as root
 - At least 50 GB of free disk space
-- `ipython` installed (`pip install ipython`)
+- `ipython`  (`pip install ipython`)
 
 ## Installation
 
