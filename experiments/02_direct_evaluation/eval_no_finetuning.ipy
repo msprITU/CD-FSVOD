@@ -1,7 +1,40 @@
 #!/usr/bin/env ipython
 
-# Direct evaluation of a base model without any fine-tuning
+# Direct evaluation of a base model on novel classes without any fine-tuning
+# (thesis test case 2).
+#
+# Usage (from /root/CD-FSVOD):
+#   ipython experiments/02_direct_evaluation/eval_no_finetuning.ipy [key=value ...]
+#
+# Options (defaults are the variables in the CONFIGURE HERE block below):
+#   dataset=FSVOD500|VOT         benchmark to evaluate on
+#   db=GOT|LaSOT|TAO             FSVOD-500 partition (dataset=FSVOD500 only)
+#   classes=name[,name...]|all   FSVOD-500 class names, or VOT-LT sequence names
+#   model=name[,name...]         base model(s): fsvod, split1, split2, split3, split4, voc
+#   frames=present|all|absent    VOT-LT frame set (dataset=VOT only):
+#                                  present: object-absent frames dropped
+#                                  all:     full timeline, object-absent frames kept
+#                                  absent:  object-absent frames only (+ first frame as query)
+#   runs=n[,n...]                query position(s), 1..5 (1 = first annotated instance)
+#   dry_run=1                    print the test commands without running them
+#
+# Examples:
+#   ipython experiments/02_direct_evaluation/eval_no_finetuning.ipy db=LaSOT classes=all model=fsvod,split1
+#   ipython experiments/02_direct_evaluation/eval_no_finetuning.ipy dataset=VOT classes=deer,carchase frames=absent
 import os
+import sys
+import json
+
+# =========CONFIGURE HERE=========
+DATASET = "FSVOD500"   # FSVOD500, VOT
+DB = "GOT"             # GOT, LaSOT, TAO (FSVOD500 only)
+CLASSES = ["deer"]     # class names (FSVOD500) or sequence names (VOT); ["all"] for every class/sequence
+MODELS = ["fsvod"]     # fsvod, split1..split4, voc
+FRAMES = "present"     # present, all, absent (VOT only)
+RUNS = [1]             # query positions, 1..5
+DRY_RUN = False
+SCORE_THRESHOLDS = [0.5, 0.85]  # for the false-detection summary on object-absent frames (VOT only)
+# ================================
 
 # SED PARAMETER FUNCTIONS
 # Change POSITION_MULTIPLIER
@@ -36,52 +69,159 @@ def setSedClasses(dataset_name, enableLogging=True):
     !grep "SED_PARAMETER_{PARAMETER}" {CONFIG_FILE}
     !grep "SED_PARAMETER_{PARAMETER2}" {CONFIG_FILE}
 
+VALID = {
+  "dataset": ["FSVOD500", "VOT"],
+  "db": ["GOT", "LaSOT", "TAO"],
+  "model": ["fsvod", "split1", "split2", "split3", "split4", "voc"],
+  "frames": ["present", "all", "absent"],
+  "runs": ["1", "2", "3", "4", "5"],
+}
 
-# CLASS_ = ["aeroplane", "ball", "bird", "boat", "bull", "car", "cat", "deer", "dog", "dragon", "face", "helicopter", "parachute", "person"] # and cat
-# CLASS_ = ["aeroplane", "ball", "bird", "boat", "bull", "car", "cat", "deer", "dog", "dragon", "face", "helicopter", "parachute", "person"] # and cat
-#  CLASS_ = ["person19", "person20", "rollerman", "skiing", "sup", "tightrope", "volkswagen", "warmup", "wingsuit", "yamaha"]
-%cd /root/BHRL
+def parseArgs():
+  global DATASET, DB, CLASSES, MODELS, FRAMES, RUNS, DRY_RUN
+  for arg in sys.argv[1:]:
+    key, sep, value = arg.partition("=")
+    values = value.split(",")
+    if not sep or not value:
+      print(f"Invalid argument '{arg}', expected key=value")
+      return False
+    if key in VALID and any(v not in VALID[key] for v in values):
+      print(f"Invalid value '{value}' for {key}, choose from {VALID[key]}")
+      return False
+    if key == "dataset": DATASET = value
+    elif key == "db": DB = value
+    elif key == "classes": CLASSES = values
+    elif key == "model": MODELS = values
+    elif key == "frames": FRAMES = value
+    elif key == "runs": RUNS = [int(v) for v in values]
+    elif key == "dry_run": DRY_RUN = value not in ("0", "false", "False")
+    else:
+      print(f"Unknown option '{key}', see the header of this script for the available options")
+      return False
+  return True
 
-item_ = ["FSVOD500"] # dataset to evaluate
-DB="GOT" # GOT, LaSOT, TAO
-for item in item_:
-  #CLASS_ = ["aeroplane", "ball", "bird", "boat", "bull", "car", "cat", "deer", "dog", "dragon", "face", "helicopter", "parachute", "person"] # and cat
-  # CLASS_ = ["aeroplane", "ball", "bull", "car", "deer", "dragon", "face", "helicopter", "parachute", "person"]
-  # CLASS_ = ["ballet", "bicycle", "bike1", "car1", "car3", "car6", "car8", "car9", "car16", "carchase", "cat1", "cat2", "dog", "f1", "following", "freesbiedog", "group1", "group2", "group3", "horseride", "kitesurfing", "liverRun", "longboard", "nissan", "person2", "person4", "person5", "person7", "person14", "person17", "person19", "person20", "rollerman", "skiing", "sup", "tightrope", "volkswagen", "warmup", "wingsuit", "yamaha"]
-  # CLASS_ = ["bird1", "boat", "bull", "deer", "dragon", "freestyle", "helicopter", "parachute", "sitcom", "uav1"]
-  CLASS_ = ["deer"]  # class names to evaluate
-  setSedClasses(item) # Automatically configure dataloader for selected dataset
-  i_=[1]
-  split = ["fsvod"]  # fsvod, split1..split4, voc
-  for i in i_:
-    setSedPositionMultiplier(i-1) # Automatically set proportional referance images per run
-    for split_ in split:
-      for class_ in CLASS_:
-          folder_path=f"/root/BHRL/fsvod_results/logs/{item}"
-          if not os.path.exists(folder_path):
-              os.makedirs(folder_path)
-              print(f"Folder '{folder_path}' created")
-          else:
-              print(f"Folder '{folder_path}' already exists")
+def listAll():
+  if DATASET == "FSVOD500":
+    folder = f"/root/BHRL/fsvod500_annotation_cb/class_separated_{DB}"
+    return sorted(f[:-len(".json")] for f in os.listdir(folder) if f.endswith(".json"))
+  folder = "/root/BHRL/vot_annotation"
+  return sorted(s for s in os.listdir(folder) if os.path.exists(f"{folder}/{s}/vot_{s}_test.json"))
 
-          # Format file paths using f-strings for clarity and simplicity
-          log_file = f"/root/BHRL/fsvod_results/logs/{item}/{item.lower()}_{class_}_{split_}_run_num_{i}.out"
-          #ann_file = f"/root/BHRL/{item.lower()}_annotation/JSON_CLASS_BASED_FINAL_new/{class_}.json"
-          #ann_file = f"/root/BHRL/{item.lower()}_annotation/instances_test.json"
-          ann_file = f"/root/BHRL/fsvod500_annotation_cb/class_separated_{DB}/{class_}.json"
-          result_file = f"/root/BHRL/fsvod_results/results/{item.lower()}_{class_}_{split_}_{i}"
+# Keeps only the object-absent frames of a full-timeline VOT annotation. The
+# first frame is kept as well since the dataloader takes the query from it.
+def makeAbsentOnly(all_file, out_file):
+  data = json.load(open(all_file))
+  absent_ids = {a["image_id"] for a in data["annotations"] if a.get("ignore", 0) == 1}
+  if not absent_ids:
+    return 0
+  keep = absent_ids | {data["images"][0]["id"]}
+  data["images"] = [im for im in data["images"] if im["id"] in keep]
+  data["annotations"] = [a for a in data["annotations"] if a["image_id"] in keep]
+  os.makedirs(os.path.dirname(out_file), exist_ok=True)
+  json.dump(data, open(out_file, "w"))
+  return len(absent_ids)
 
-          cmd = f"""
-          cd /root/BHRL
-          python tools/test.py \
-            --config "/root/BHRL/configs/vot/UODD2.py" \
-            --seq_name {item} \
-            --part 1 \
-            --ann_file {ann_file} \
-            --checkpoint "/root/BHRL/checkpoints/model_{split_}.pth" \
-            --run_num 1 \
-            --eval bbox \
-            --result_file {result_file} 2>&1 | tee -a {log_file}
-          """
+def getAnnFile(class_):
+  if DATASET == "FSVOD500":
+    return f"/root/BHRL/fsvod500_annotation_cb/class_separated_{DB}/{class_}.json"
+  if FRAMES == "present":
+    return f"/root/BHRL/vot_annotation/{class_}/vot_{class_}_test.json"
+  all_file = f"/root/BHRL/vot_annotation/{class_}/vot_{class_}_test_all.json"
+  if FRAMES == "all":
+    return all_file
+  out_file = f"/root/BHRL/vot_results/no_finetuning/annotations/vot_{class_}_test_absent_only.json"
+  if not os.path.exists(all_file):
+    return all_file
+  if makeAbsentOnly(all_file, out_file) == 0:
+    print(f"Sequence '{class_}' has no object-absent frames, skipping")
+    return None
+  return out_file
 
-          !{cmd}
+# Summarises the detections on the object-absent frames of a VOT run. There is no
+# ground truth on these frames, so every detection is a false positive.
+def reportAbsent(ann_file, result_file, seq_name, log_file):
+  res_path = f"{result_file}/results_{seq_name}_part_1.txt"
+  if not os.path.exists(res_path):
+    return
+  data = json.load(open(ann_file))
+  absent_ids = {a["image_id"] for a in data["annotations"] if a.get("ignore", 0) == 1}
+  # tools/test.py appends one line per frame (query frame excluded), keep the last run
+  lines = open(res_path).read().split()[-(len(data["images"]) - 1):]
+  scores = []
+  for line in lines:
+    fields = line.split(",")
+    if data["images"][int(fields[0]) - 1]["id"] in absent_ids:
+      scores.append(float(fields[5]))
+  if not scores:
+    return
+  n = len(scores)
+  text = f"OBJECT-ABSENT FRAMES of {seq_name}: {n} frames, mean top score {sum(scores)/n:.3f}"
+  for thr in SCORE_THRESHOLDS:
+    fp = sum(1 for s in scores if s >= thr)
+    text += f", false detections at score >= {thr}: {fp} ({100*fp/n:.1f}%)"
+  print(text)
+  with open(log_file, "a") as f:
+    f.write(text + "\n")
+
+def main():
+  if not parseArgs():
+    return
+  classes = listAll() if CLASSES == ["all"] else CLASSES
+  runs = RUNS
+  if DATASET == "VOT" and FRAMES != "present" and runs != [1]:
+    # other query positions may fall on an object-absent frame
+    print("frames=all/absent always take the query from the first frame, using runs=1")
+    runs = [1]
+  if DATASET == "FSVOD500":
+    out_root = "/root/BHRL/fsvod_results"
+    tag = f"fsvod500_{DB}"
+  else:
+    out_root = "/root/BHRL/vot_results/no_finetuning"
+    tag = f"vot_{FRAMES}"
+  print(f"dataset={DATASET} db={DB} classes={classes} model={MODELS} frames={FRAMES} runs={runs}")
+
+  if not DRY_RUN:
+    setSedClasses(DATASET) # Automatically configure dataloader for selected dataset
+  for i in runs:
+    if not DRY_RUN:
+      setSedPositionMultiplier(i-1) # Automatically set proportional referance images per run
+    for model in MODELS:
+      # the VOC base model uses a different RoI layer than the others
+      if model == "voc":
+        config = "/root/BHRL/configs/voc/BHRL.py"
+      elif DATASET == "VOT":
+        config = "/root/BHRL/configs/vot/BHRL.py"
+      else:
+        config = "/root/BHRL/configs/vot/UODD2.py"
+      for class_ in classes:
+        ann_file = getAnnFile(class_)
+        if ann_file is None:
+          continue
+        if not os.path.exists(ann_file):
+          print(f"Annotation file '{ann_file}' not found, skipping '{class_}'")
+          continue
+        seq_name = class_ if DATASET == "VOT" else DATASET
+        log_file = f"{out_root}/logs/{DATASET}/{tag}_{class_}_{model}_run_num_{i}.out"
+        result_file = f"{out_root}/results/{tag}_{class_}_{model}_{i}"
+
+        cmd = f"""
+        cd /root/BHRL
+        python tools/test.py \
+          --config "{config}" \
+          --seq_name {seq_name} \
+          --part 1 \
+          --ann_file "{ann_file}" \
+          --checkpoint "/root/BHRL/checkpoints/model_{model}.pth" \
+          --run_num {i} \
+          --eval bbox \
+          --result_file "{result_file}" 2>&1 | tee -a "{log_file}"
+        """
+        if DRY_RUN:
+          print(cmd)
+          continue
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        !{cmd}
+        if DATASET == "VOT" and FRAMES != "present":
+          reportAbsent(ann_file, result_file, seq_name, log_file)
+
+main()

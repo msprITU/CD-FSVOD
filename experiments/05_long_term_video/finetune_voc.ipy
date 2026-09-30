@@ -42,8 +42,9 @@ items = [ "ballet", "car3", "person19", "person2", "person20", "person4", "perso
 if len(sys.argv) > 1:
   items = sys.argv[1:]
 split = "voc"
+# the dataloader needs the VOT class list and takes the query from the first frame
+setSedClasses("VOT")
 setSedPositionMultiplier(0)
-# setSedClasses("VOC")
 for item in items:
   i=1
   folder_path="/root/BHRL/vot_results/init_frame_ft/coco/logs/VOT_ORIGINAL/{}". format(split)

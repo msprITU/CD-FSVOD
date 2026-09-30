@@ -1,8 +1,11 @@
 #!/usr/bin/env ipython
 
-%cd /root/BHRL
 import os
 import sys
+# the dataloader needs the VOT class list and takes the query from the first frame
+TOOLS_DIR = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "..", "..", "tools")
+!ipython {TOOLS_DIR}/configure_dataloader.ipy VOT 0
+%cd /root/BHRL
 # remove unwanted sequence names and select the base model split
 #items = ["ballet", "bicycle", "following", "bike1", "bird1", "boat", "girl", "bull", "group1", "rollerman", "sitcom", "group2", "skiing", "group3", "sup", "helicopter", "tightrope", "cat1", "horseride", "uav1", "cat2", "kitesurfing", "volkswagen", "deer", "liverRun", "warmup", "dog", "longboard", "wingsuit", "dragon", "nissan", "yamaha", "f1", "parachute"]
 #items = ["warmup"]

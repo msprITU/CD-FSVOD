@@ -1,4 +1,7 @@
 #!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# the dataloader needs the VOT class list and takes the query from the first frame
+ipython "$SCRIPT_DIR/../../tools/configure_dataloader.ipy" VOT 0
 cd /root/BHRL
 
 
@@ -27,7 +30,9 @@ for seq in "${videos[@]}"; do
       --ann_file vot_annotation/ft/${seq}_first_ft.json \
       --work_dir work_dirs/vot/BHRL/model_coco/${seq}
 
-    seq_parts_num=$(python scripts/split_seq_imgs.py ${seq} 100)
+    python scripts/split_seq_imgs.py ${seq} 100 > /dev/null
+    # index of the last 100-frame part of the full timeline (object-absent frames included)
+    seq_parts_num=$(( $(ls vot_annotation/${seq}/with_absent/${seq}_part_*.json | wc -l) - 1 ))
     python tools/test.py \
         --config configs/vot/BHRL.py \
         --seq_name ${seq} \
@@ -62,7 +67,10 @@ for seq in "${videos[@]}"; do
             --result_file "vot_results/target_update_studies/real_time/e100_IoU_0_7_parts/parts_100/coco/results/${seq}" \
             --eval bbox | tee $log_file
 
-        python scripts/find_update_frame_absent.py ${seq} $i 100 coco | tee vot_results/target_update_studies/real_time/e100_IoU_0_7_parts/parts_100/coco/logs/${seq}/${seq}_update_frames_$i.out
+        # the last part has no following part to prepare a target update for
+        if [ $i -lt $seq_parts_num ]; then
+            python scripts/find_update_frame_absent.py ${seq} $i 100 coco | tee vot_results/target_update_studies/real_time/e100_IoU_0_7_parts/parts_100/coco/logs/${seq}/${seq}_update_frames_$i.out
+        fi
     done
 done
 

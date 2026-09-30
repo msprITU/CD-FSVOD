@@ -2,6 +2,7 @@
 
 # Class-based evaluation on the still-image cross-domain benchmarks
 import os
+import sys
 
 # SED PARAMETER FUNCTIONS
 # Change POSITION_MULTIPLIER
@@ -32,17 +33,32 @@ def setSedClasses(dataset_name, enableLogging=True):
     !grep "SED_PARAMETER_{PARAMETER}" {CONFIG_FILE}
     !grep "SED_PARAMETER_{PARAMETER2}" {CONFIG_FILE}
 
+# Class-separated test annotations and fine-tuning support annotations of each dataset
+ANN_DIR = {
+  "ArTaxOr": "/root/BHRL/artoxor_annotation/class_separated",
+  "DIOR": "/root/BHRL/dior_annotation/class_separated",
+  "UODD": "/root/BHRL/uodd_annotation/class_separated",
+  "VOT": "/root/BHRL/vot_annotation/JSON_CLASS_BASED_FINAL",
+}
+FT_DIR = {
+  "ArTaxOr": "/root/BHRL/artoxor_annotation/ft",
+  "DIOR": "/root/BHRL/dior_annotation/ft",
+  "UODD": "/root/BHRL/uodd_annotation/ft",
+  "VOT": "/root/BHRL/vot_annotation/JSON_CLASS_BASED_FINAL/ft",
+}
 
 %cd /root/BHRL
 
-item_ = ["VOT"] #, "DIOR", "UODD"] # This datasets will be evaluated
-for item in item_:
-  # CLASS_ = ["aeroplane", "ball", "bird", "boat", "bull", "car", "cat", "deer", "dog", "dragon", "face", "helicopter", "parachute", "person"] # and cat
-  # CLASS_ = ("ballet", "bicycle", "bike1", "car1", "car3", "car6", "car8", "car9", "car16", "carchase", "cat1", "cat2", "dog", "f1", "following", "freesbiedog", "group1", "group2", "group3", "horseride", "kitesurfing", "liverRun", "longboard", "nissan", "person2", "person4", "person5", "person7", "person14", "person17", "person19", "person20", "rollerman", "skiing", "sup", "tightrope", "volkswagen", "warmup", "wingsuit", "yamaha")
-  CLASS_ = ["aeroplane", "ball", "bird", "boat", "bull", "car", "cat", "deer", "dog", "dragon", "face", "helicopter", "parachute", "person"] # and cat
-  #CLASS_ = ("person2", "person4", "person5", "person7", "person14", "person17", "person19", "person20", "rollerman", "skiing", "sup", "tightrope", "volkswagen", "warmup", "wingsuit", "yamaha")
-  # CLASS_ = ["person19", "person20", "rollerman", "skiing", "sup", "tightrope", "volkswagen", "warmup", "wingsuit", "yamaha"]
+item_ = ["ArTaxOr", "DIOR", "UODD"] # datasets to evaluate: ArTaxOr, DIOR, UODD, VOT
+if len(sys.argv) > 1:
+  item_ = sys.argv[1:]
 
+for item in item_:
+  if item not in ANN_DIR:
+    print(f"Unknown dataset '{item}', choose from {list(ANN_DIR)}")
+    continue
+  # all classes of the dataset; replace with a list of class names to evaluate a subset
+  CLASS_ = sorted(f[:-len(".json")] for f in os.listdir(ANN_DIR[item]) if f.endswith(".json"))
   setSedClasses(item) # Automatically configure dataloader for selected dataset
   i_=[1,2,3,4,5]
   split = [2,4] # !!!
@@ -68,8 +84,7 @@ for item in item_:
           # logs and results will be saved here, change accordingly
           train_log_file = f"/root/BHRL/vot_results/init_frame_ft/coco/train_{item.lower()}_{class_}_{split_}_{i}.out"
           log_file = f"/root/BHRL/vot_results/init_frame_ft/coco/logs/{item}/{item.lower()}_{class_}_{split_}_run_num_{i}.out"
-          ann_file = f"/root/BHRL/{item.lower()}_annotation/JSON_CLASS_BASED_FINAL/{class_}.json"
-          #ann_file = f"/root/BHRL/{item.lower()}_annotation/instances_test.json"
+          ann_file = f"{ANN_DIR[item]}/{class_}.json"
 
           result_file = f"/root/BHRL/vot_results/init_frame_ft/coco/results/{item.lower()}_{class_}_{split_}_{i}"
 
@@ -81,7 +96,7 @@ for item in item_:
               --config configs/vot/UODD2.py \
               --seq_name {item} \
               --no-validate \
-              --ann_file /root/BHRL/{item.lower()}_annotation/JSON_CLASS_BASED_FINAL/ft/{class_}_{i}_ft.json \
+              --ann_file {FT_DIR[item]}/{class_}_{i}_ft.json \
               --seq_img_id 0 \
               --work_dir /root/BHRL/work_dirs/vot/BHRL/first_images_seperate/split{split_}/{item.lower()}_{class_}_{i} 2>&1 | tee -a {train_log_file}
 

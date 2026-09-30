@@ -53,7 +53,7 @@ fi
 
 # FSVOD-500 within-domain base model trained in the thesis
 echo "Downloading FSVOD-500 base model"
-wget -q --show-progress https://github.com/hanoglu/CD-FSVOD/releases/download/v1.0/model_fsvod.pth
+wget -q --show-progress https://github.com/msprITU/CD-FSVOD/releases/download/v1.0/model_fsvod.pth
 
 # Download code and annotation archives
 echo "Downloading BHRL.zip"
@@ -89,6 +89,7 @@ mv fsvod500_annotation_cb BHRL/
 echo "Rewriting directory paths"
 rg "/content/drive/MyDrive/BHRL" -l | xargs -i sed -i 's#/content/drive/MyDrive/BHRL#/root/BHRL#g' {}
 rg "/truba/home/ionur/BHRL" -l | xargs -i sed -i 's#/truba/home/ionur/BHRL#/root/BHRL#g' {}
+rg "/home/ionur2/Desktop/MSc_THESIS/BHRL/data/VOT" -l | xargs -i sed -i 's#/home/ionur2/Desktop/MSc_THESIS/BHRL/data/VOT#/root/BHRL/VOTIMAGES#g' {}
 
 # Apply repository patches over the BHRL helper scripts
 cp "$SCRIPT_DIR/../patches/find_update_frame.py" BHRL/scripts/

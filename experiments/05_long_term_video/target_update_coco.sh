@@ -1,4 +1,7 @@
 #!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# the dataloader needs the VOT class list and takes the query from the first frame
+ipython "$SCRIPT_DIR/../../tools/configure_dataloader.ipy" VOT 0
 cd /root/BHRL
 
 
@@ -60,7 +63,10 @@ for seq in "${videos[@]}"; do
             --result_file "vot_results/target_update_studies/real_time/e100_IoU_0_7_parts/parts_100/coco_split2/results/${seq}" \
             --eval bbox | tee $log_file
 
-        python scripts/find_update_frame.py ${seq} $i 100 coco_split2 | tee vot_results/target_update_studies/real_time/e100_IoU_0_7_parts/parts_100/coco_split2/logs/${seq}/${seq}_update_frames_$i.out
+        # the last part has no following part to prepare a target update for
+        if [ $i -lt $seq_parts_num ]; then
+            python scripts/find_update_frame.py ${seq} $i 100 coco_split2 | tee vot_results/target_update_studies/real_time/e100_IoU_0_7_parts/parts_100/coco_split2/logs/${seq}/${seq}_update_frames_$i.out
+        fi
     done
 done
 

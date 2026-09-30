@@ -48,8 +48,6 @@ DB="GOT" # GOT, LaSOT, TAO
 ITEMS = ["amphibian", "aoudad", "asian_crocodile", "autogiro", "bactrian_camel", "balloon", "bathyscaphe", "belgian_hare", "binturong", "black_squirrel", "brahman", "canada_porcupine", "cheetah", "chiacoan_peccary", "chimaera", "chinese_paddlefish", "crab", "crayfish", "cruise_missile", "deer", "destroyer_escort", "dumpcart", "elasmobranch", "elk", "fall_cankerworm", "fanaloka", "garden_centipede", "gavial", "gemsbok", "giant_panda", "guard_ship", "hand_truck", "hermit_crab", "horse_cart", "horseshoe_crab", "humvee", "ibex", "indian_rhinoceros", "JetLev-Flyer", "lander", "langur", "lappet_caterpillar", "lemur", "leopard", "lesser_panda", "lion", "luge", "malayan_tapir", "minisub", "monkey", "mouflon", "mountain_goat", "orangutan", "pacific_walrus", "peba", "pedicab", "peludo", "pere_davids_deer", "pony_cart", "pung", "rabbit", "raccoon", "reconnaissance_vehicle", "sassaby", "serow", "skibob", "snow_leopard", "snowmobil", "sow", "spider_monkey", "suricate", "tadpole_shrimp", "tiglon", "virginia_deer", "warthog", "whale", "wheelchair", "white_crocodile", "white_rabbit", "white_rhinoceros", "white-tailed_jackrabbit", "woolly_monkey"]
 
 for item in ITEMS:
-  i=1
-  setSedClasses(item) # Automatically configure dataloader for selected dataset
   i_=[1,2,3,4,5]
   for i in i_:
     setSedPositionMultiplier(i-1) # Automatically set proportional referance images per run

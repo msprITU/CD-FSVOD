@@ -2,6 +2,7 @@ import json
 import os 
 import sys
 import copy
+import glob
 
 
 seq = sys.argv[1]
@@ -39,6 +40,10 @@ def split_seq():
             parts_imgs.append(input_list[i * part_size: (i + 1) * part_size])
 
 
+    # remove the parts of earlier runs so that only the parts written below are counted
+    for old_part in glob.glob(os.path.join(save_path, "{}_part_*.json". format(seq))):
+        os.remove(old_part)
+
     for idx, each_part in enumerate(parts_ann):
         voc_copy = copy.deepcopy(voc_data)
         voc_copy["images"] = parts_imgs[idx]
@@ -49,7 +54,7 @@ def split_seq():
         with open(out_path, "w") as outfile:
             outfile.write(json_object)
 
-    return sum(1 for filename in os.listdir(save_path) if "part" in filename and filename.endswith('.json')) - 1
+    return num_parts - 1
 
 
 def read_json():

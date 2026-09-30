@@ -2,6 +2,7 @@
 
 # Class-based evaluation on the still-image cross-domain benchmarks
 import os
+import sys
 
 # SED PARAMETER FUNCTIONS
 # Change POSITION_MULTIPLIER
@@ -32,22 +33,35 @@ def setSedClasses(dataset_name, enableLogging=True):
     !grep "SED_PARAMETER_{PARAMETER}" {CONFIG_FILE}
     !grep "SED_PARAMETER_{PARAMETER2}" {CONFIG_FILE}
 
+# Class-separated test annotations and fine-tuning support annotations of each dataset
+ANN_DIR = {
+  "ArTaxOr": "/root/BHRL/artoxor_annotation/class_separated",
+  "DIOR": "/root/BHRL/dior_annotation/class_separated",
+  "UODD": "/root/BHRL/uodd_annotation/class_separated",
+  "VOT": "/root/BHRL/vot_annotation/JSON_CLASS_BASED_FINAL",
+}
+FT_DIR = {
+  "ArTaxOr": "/root/BHRL/artoxor_annotation/ft",
+  "DIOR": "/root/BHRL/dior_annotation/ft",
+  "UODD": "/root/BHRL/uodd_annotation/ft",
+  "VOT": "/root/BHRL/vot_annotation/JSON_CLASS_BASED_FINAL/ft",
+}
 
-# CLASS_ = ["aeroplane", "ball", "bird", "boat", "bull", "car", "cat", "deer", "dog", "dragon", "face", "helicopter", "parachute", "person"] # and cat
-# CLASS_ = ["aeroplane", "ball", "bird", "boat", "bull", "car", "cat", "deer", "dog", "dragon", "face", "helicopter", "parachute", "person"] # and cat
-#  CLASS_ = ["person19", "person20", "rollerman", "skiing", "sup", "tightrope", "volkswagen", "warmup", "wingsuit", "yamaha"]
 %cd /root/BHRL
 
-item_ = ["VOT"] #, "DIOR", "UODD"] # This datasets will be evaluated
+item_ = ["ArTaxOr", "DIOR", "UODD"] # datasets to evaluate: ArTaxOr, DIOR, UODD, VOT
+if len(sys.argv) > 1:
+  item_ = sys.argv[1:]
+i_=[1]      # query positions, 1..5
+split = [1] # COCO base model splits, 1..4
+
 for item in item_:
-  #CLASS_ = ["aeroplane", "ball", "bird", "boat", "bull", "car", "cat", "deer", "dog", "dragon", "face", "helicopter", "parachute", "person"] # and cat
-  # CLASS_ = ["aeroplane", "ball", "bull", "car", "deer", "dragon", "face", "helicopter", "parachute", "person"]
-  # CLASS_ = ["ballet", "bicycle", "bike1", "car1", "car3", "car6", "car8", "car9", "car16", "carchase", "cat1", "cat2", "dog", "f1", "following", "freesbiedog", "group1", "group2", "group3", "horseride", "kitesurfing", "liverRun", "longboard", "nissan", "person2", "person4", "person5", "person7", "person14", "person17", "person19", "person20", "rollerman", "skiing", "sup", "tightrope", "volkswagen", "warmup", "wingsuit", "yamaha"]
-  # CLASS_ = ["bird1", "boat", "bull", "deer", "dragon", "freestyle", "helicopter", "parachute", "sitcom", "uav1"]
-  CLASS_ = [ "f1", "following", "freesbiedog", "group1", "group2", "group3", "horseride", "kitesurfing", "longboard", "nissan", "person2", "person4", "person5", "person7", "person14", "person17", "person19", "person20", "rollerman", "skiing", "sup", "tightrope", "volkswagen", "warmup", "wingsuit", "yamaha", "liverRun", "bird1", "boat", "bull", "deer", "dragon", "freestyle", "helicopter", "parachute", "sitcom", "uav1"]
+  if item not in ANN_DIR:
+    print(f"Unknown dataset '{item}', choose from {list(ANN_DIR)}")
+    continue
+  # all classes of the dataset; replace with a list of class names to evaluate a subset
+  CLASS_ = sorted(f[:-len(".json")] for f in os.listdir(ANN_DIR[item]) if f.endswith(".json"))
   setSedClasses(item) # Automatically configure dataloader for selected dataset
-  i_=[1]
-  split = [1] # !!!
   for i in i_:
     setSedPositionMultiplier(i-1) # Automatically set proportional referance images per run
     for split_ in split:
@@ -61,8 +75,7 @@ for item in item_:
 
           # Format file paths using f-strings for clarity and simplicity
           log_file = f"/root/BHRL/vot_results/coco/logs/{item}/{item.lower()}_{class_}_{split_}_run_num_{i}.out"
-          ann_file = f"/root/BHRL/{item.lower()}_annotation/JSON_CLASS_BASED_FINAL_new/{class_}.json"
-          #ann_file = f"/root/BHRL/{item.lower()}_annotation/instances_test.json"
+          ann_file = f"{ANN_DIR[item]}/{class_}.json"
           result_file = f"/root/BHRL/vot_results/coco/results/{item.lower()}_{class_}_{split_}_{i}"
 
           cmd = f"""

@@ -1,9 +1,25 @@
 #!/usr/bin/env ipython
 
+# Sets the class list and the query position of the BHRL dataloader
+# (/root/BHRL/mmdet/datasets/one_shot_voc.py).
+#
+# Usage (from /root):
+#   ipython CD-FSVOD/tools/configure_dataloader.ipy [DATASET] [QUERY_POSITION]
+#
+#   DATASET         VOT, FSVOD500, ArTaxOr, DIOR, UODD (default: CONFIGURE_FOR below)
+#   QUERY_POSITION  0..4 (default: QUERY_POSITION below)
+import sys
+
 # =========CONFIGURE HERE=========
 CONFIGURE_FOR="VOT"
+QUERY_POSITION=0
 CONFIG_FILE="/root/BHRL/mmdet/datasets/one_shot_voc.py"
 # ================================
+DATASETS = ["VOT", "FSVOD500", "ArTaxOr", "DIOR", "UODD"]
+if len(sys.argv) > 1:
+  CONFIGURE_FOR = sys.argv[1]
+if len(sys.argv) > 2:
+  QUERY_POSITION = int(sys.argv[2])
 
 def setSedPositionMultiplier(multiplier_index, enableLogging=True):
   PARAMETER="POSITION_MULTIPLIER"
@@ -34,7 +50,9 @@ def setSedClasses(dataset_name, enableLogging=True):
     !grep "SED_PARAMETER_{PARAMETER}" {CONFIG_FILE}
     !grep "SED_PARAMETER_{PARAMETER2}" {CONFIG_FILE}
 
-setSedClasses(CONFIGURE_FOR)
-setSedPositionMultiplier(0)
-print(f"Dataloader configured for {CONFIGURE_FOR} dataset")
-print(f"If you want to configure for another dataset [DIRO, UODD, VOT, FSVOD500] configure this script")
+if CONFIGURE_FOR not in DATASETS or QUERY_POSITION not in range(5):
+  print(f"Usage: configure_dataloader.ipy [DATASET] [QUERY_POSITION], DATASET one of {DATASETS}, QUERY_POSITION 0..4")
+else:
+  setSedClasses(CONFIGURE_FOR)
+  setSedPositionMultiplier(QUERY_POSITION)
+  print(f"Dataloader configured for {CONFIGURE_FOR} dataset, query position {QUERY_POSITION}")
